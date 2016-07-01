@@ -53,20 +53,35 @@ def count_tags(filename):
         return tags
 
 def is_street(tag):
+    
+    if 'k' not in tag.attrib:
+        print tag.attrib
+        return False
     return tag.attrib['k'] == "addr:street"
 
 
 def audit_name(osmfile):
     osm_file_name = open(osmfile,"r")
     #street_types = defaultdict(set)
-    street_types = []
-    for event,elem in ET.iterparse(osm_file_name, events=("start",)):
+    street_types = set()
+    #context = ET.iterparse(osm_file_name, events=("start", "end"))
+    context = ET.iterparse(osm_file_name, events=("start",))
+    context = iter(context)
+    event, root = context.next()
+    for event,elem in context:
         if elem.tag == "node" or elem.tag == "way":
+            print elem.attrib['changeset']
             for tag in elem.iter("tag"):
+                
                 if is_street(tag):
                     #street_types[tag.attrib['v']].add(tag.attrib['v'])
-                    street_types.append(tag.attrib['v'])
-    return street_types
+                    street_types.add(tag.attrib['v'])
+                else:
+                    print tag.attrib
+        root.clear()
+         
+        elem.clear()
+    print street_types
 
 def create_small_file():
     with open(OUTPUT_FILE, 'wb') as output:
@@ -83,6 +98,7 @@ def create_small_file():
 
 if __name__ == "__main__":
     #create_small_file()
-    tags = count_tags(OSM_FILE)
-    print tags
+    #tags = count_tags(OSM_FILE)
+    audit_name(OUTPUT_FILE)
+    #print street_types
                 
