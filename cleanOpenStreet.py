@@ -3,12 +3,15 @@
 
 import xml.etree.ElementTree as ET
 import sys,re
+import pprint
+import codecs
+import json
 from collections import defaultdict
 from shape_element import shape_element
 #OSM_FILE = "chennai_india.osm"
 OSM_FILE = "singapore.osm"
 OUTPUT_FILE = "output.osm"
-k = 5
+k = 15
 street_type_re_number = re.compile(r'\b\S+[0-9]+?$', re.IGNORECASE)
 number = re.compile(r'[0-9]+$',re.IGNORECASE)
 street_type_re = re.compile(r'\b\S+\.?$', re.IGNORECASE)
@@ -253,7 +256,53 @@ def audit_city(osmfile):
     print "strange postal codes"
     print post
     return city
+def is_language(tag):
+    values = tag.attrib['k'].split(":")
+    if values[0] == "name":
+        return True
+    return False
 
+def isEnglish(s):
+
+    """
+    Taken from http://stackoverflow.com/questions/27084617/detect-strings-with-non-english-characters-in-python
+    """
+    #print s
+    try:
+        s.decode('ascii')
+    except UnicodeDecodeError:
+        return False
+    except :
+        return False
+    else:
+        return True
+def audit_language(osmfile):
+    osm_file_name = open(osmfile,"r")
+    language_types = defaultdict(set)
+  
+    context = ET.iterparse(osm_file_name, events=("start",))
+    context = iter(context)
+    event, root = context.next()
+    
+    for event,elem in context:
+        #shape_element(elem)
+        if elem.tag == "node" or elem.tag == "way":
+            
+            city_now = ""   
+            for tag in elem.iter("tag"):
+                
+                if is_language(tag):
+                    if isEnglish(tag.attrib['v']):
+                        print tag.attrib['v']
+                        language_types[tag.attrib['k']].add(tag.attrib['v'])
+                    
+                    
+                
+        else:
+             elem.clear()
+        root.clear()
+    #pprint.pprint(language_types)
+    
 def create_small_file():
     with open(OUTPUT_FILE, 'wb') as output:
         output.write('<?xml version="1.0" encoding="UTF-8"?>\n')
@@ -267,12 +316,38 @@ def create_small_file():
         output.write('</osm>')
         print "File created"
 
+def create_json(file_in, pretty = False):
+    context = ET.iterparse(file_in, events=("start",))
+    context = iter(context)
+    event, root = context.next()
+    file_out = "{0}.json".format(file_in)
+    data = []
+    with codecs.open(file_out, "w") as fo:
+        for _, element in context:
+            el = shape_element(element)
+            if el:
+                #data.append(el)
+                if pretty:
+                    fo.write(json.dumps(el, indent=2)+"\n")
+                else:
+                    fo.write(json.dumps(el) + "\n")
+                del el
+            
+            
+            element.clear()
+            root.clear()
+    print "Json file created"               
+    return data
+
 if __name__ == "__main__":
     #create_small_file()
+    #audit_language(OUTPUT_FILE)
+    #data = create_json(OUTPUT_FILE, True)
+    create_json(OSM_FILE, True)
     #tags = count_tags(OSM_FILE)
     #city = audit_city(OUTPUT_FILE)
-    city = audit_city(OSM_FILE)
-    print city
+    #city = audit_city(OSM_FILE)
+    #print city
     #street_types = audit_name(OSM_FILE)
     #street_types = audit_name(OUTPUT_FILE)
     #print "Total Number of Unique Street Names", len(street_types)
