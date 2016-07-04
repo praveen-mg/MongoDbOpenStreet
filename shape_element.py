@@ -1,3 +1,91 @@
+#from cleanOpenStreet import is_city, is_singapore
+import re
+problemchars = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
+number = re.compile(r'[0-9]+$',re.IGNORECASE)
+mapping = { "St": "Street",
+            "St.": "Street",
+            "Ave" : "Avenue",
+            "Rd"   : "Road",
+            "Dr"   : "Drive",
+            "Rd." : "Road",
+            "Jl"  : "Jalan",
+            "Jl." : "Jalan",
+            "Jln." : "Jalan",
+            "Jln" : "Jalan",
+            "Cresent" : "Crescent"
+            }
+def is_city(tag):
+    """
+    if 'k' not in tag.attrib:
+        print tag.attrib
+        return False
+    """
+    
+    return tag.attrib['k'] == "addr:city"
+def is_singapore(elem):
+    #pass
+    for tag in elem.iter("tag"):
+        if is_city(tag):
+            if tag.attrib['v'] in singapore_list:
+                return True
+            else:
+                return False
+
+    return True
+
+def is_language(tag):
+    values = tag.attrib['k'].split(":")
+    if values[0] == "name":
+        return True
+    return False
+def isEnglish(s):
+
+    """
+    Taken from http://stackoverflow.com/questions/27084617/detect-strings-with-non-english-characters-in-python
+    """
+    #print s
+    try:
+        s.decode('ascii')
+    except UnicodeDecodeError:
+        return False
+    except :
+        return False
+    else:
+        return True
+def audit_language(osmfile):
+    osm_file_name = open(osmfile,"r")
+    language_types = defaultdict(set)
+  
+    context = ET.iterparse(osm_file_name, events=("start",))
+    context = iter(context)
+    event, root = context.next()
+    
+    for event,elem in context:
+        #shape_element(elem)
+        if elem.tag == "node" or elem.tag == "way":
+            
+            city_now = ""   
+            for tag in elem.iter("tag"):
+                
+                if is_language(tag):
+                    if isEnglish(tag.attrib['v']):
+                        #print tag.attrib['v']
+                        language_types[tag.attrib['k']].add(tag.attrib['v'])
+
+def update_name(name):
+
+    # YOUR CODE HERE
+    name_list = name.split(" ")
+    #print name_list[len(name_list)-1]  
+    #print mapping[name_list[len(name_list)-1]]
+    if name_list[len(name_list)-1] in mapping:
+        name_list[len(name_list)-1] = mapping[name_list[len(name_list)-1]]
+    if name_list[0] in mapping:
+        name_list[0] = mapping[name_list[0]]
+    name = " "
+    name = name.join(name_list)
+    return name
+    
 def shape_element(element):
     node = {}
     pos = []
@@ -26,6 +114,7 @@ def shape_element(element):
         prev = False
         prev_address = False
         otherExt = False
+        Name = False
         other = {}
         other_list = []
         k_val = None
@@ -42,6 +131,10 @@ def shape_element(element):
                     
                     if key == "k":
                         #print val
+                        #if is_singapore:
+                            #pass
+                        #else:
+                            #return None
                         if not problemchars.findall(val):
                             val_list = val.split(":")
                             #print val_list
@@ -50,11 +143,14 @@ def shape_element(element):
                                 #print val
                                 prev = True
                             elif len(val_list) == 2:
-                                print val_list
+                                #print val_list
                                 if val_list[0] == "addr":
                                     k_val = val_list[1]
                                     #print val
                                     prev_address = True
+                                elif val_list[0] == "name":
+                                    #k_val = val
+                                    Name = True
                                 else:
                                     #pass
                                     otherExt = True
@@ -64,11 +160,27 @@ def shape_element(element):
                     elif key == "v":
                         if prev_address:
                             prev_address = False
-                            address[k_val] = val
-                            print k_val,val
+                            #if k_val == "city":
+                                #address[k_val] = "Singapore"
+                            if k_val == "street":
+                                better_name = update_name(val)
+                                address[k_val] = better_name
+                            elif k_val == "postcode":
+                                m = number.match(val)
+                                if m:
+                                    if len(val) == 6:
+                                        address[k_val] = val
+                            else:
+                                address[k_val] = val
+                            #print k_val,val
                         elif prev:
                             prev = False
+                            
                             node[k_val] = val
+                        elif Name:
+                            Name = False
+                            if isEnglish(val):
+                                node["name"] = val
                         elif otherExt:
                             #pass
                             otherExt = False
@@ -102,9 +214,11 @@ def shape_element(element):
             
                 
                 #print val
-        print "print node"
-        print node
+        #print "print node"
+        #print node
         return node
+        element.clear()
     else:
+        element.clear()
         return None
 
