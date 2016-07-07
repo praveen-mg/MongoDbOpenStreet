@@ -38,6 +38,18 @@ def db_top_cusine():
                 {"$sort":{"count":-1}}]
     return pipeline
     
+def db_top_religion():
+    #{"$match":{"$and" :[{"amenity":"place_of_worship"},{"religion":{"$exists":1}}]}},
+    pipeline = [{"$match":{"amenity":"place_of_worship"}},
+                {"$group":{"_id":"$religion","count":{"$sum":1}}},
+                {"$sort":{"count":-1}}]
+    return pipeline
+    
+def db_cities():
+    
+    pipeline = [{"$match":{"address.city":{"$exists":1}}},{"$group":{"_id":"$address.city","count":{"$sum":1}}},
+                {"$sort":{"count":-1}}]
+    return pipeline
 def find():
     #cities = db.city.find({ "name": "PIE"})
     db = client.work
@@ -60,20 +72,23 @@ def find():
        # pprint.pprint(aminity)
     """
     print "None amenities"
-    query = {"amenity":"restaurant"}   
+    query = {"amenity":"place_of_worship"}   
     amenities = db_query(db,query)
     count = 0
     fast_food = db_aggregate(db,db_top_fastfood())
     
-    for operator in fast_food:
+    for operator in amenities:
         pprint.pprint(operator)
         count = count + 1
         #if count == 5:
             #break
     """
+    
+    """
     top_cusine = db_aggregate(db,db_top_cusine())
     for cusine in top_cusine:
         pprint.pprint(cusine)
+    """
     """
     top_users = db_aggregate(db,top_user(1))
     print "Top User"
@@ -97,7 +112,21 @@ def find():
     for user in single_contributions:
         pprint.pprint(user)
     """
+    """
+    Top religions in SIngapore
+    """
+    religions = db_aggregate(db,db_top_religion())
     
+    for religion in religions:
+        pprint.pprint(religion)
+        
+    """
+    cities
+    """
+    
+    cities_data = db_aggregate(db,db_cities())
+    for city_data in cities_data:
+        pprint.pprint(city_data)
     #print ""db.city.find({"type":"node"}).count()
     
 
